@@ -27,10 +27,13 @@ select
     n.release_year as year_key,
     n.type as type_key,
     c.rating,
+    n.date_added,
     c.no_of_persons_voted as votes,
     try_cast(
         nullif(regexp_extract(n.duration, '(\d+)\s*min', 1), '') as integer
     ) as duration_minutes
 from {{ ref('int_titles_attributes') }} n
-inner join critic c on n.title_key = c.title_key
+left join critic c
+    on n.title_key = c.title_key
+    and c.rn = 1
 where c.rn = 1

@@ -134,3 +134,35 @@ models:
         description: "Total de pessoas que votaram (medida)."
       - name: duration_minutes
         description: "Duração em minutos para filmes; nulo para TV Show (medida)."
+  - name: mart_netflix_genre_year
+    description: >
+      Analise agregada de titulos Netflix por ano de entrada no catalogo
+      e genero. O percentual representa a participacao do genero no
+      total de titulos adicionados naquele ano. Como os generos sao
+      multivalorados, os percentuais nao sao necessariamente aditivos.
+    columns:
+      - name: genre_year_key
+        description: Chave composta de ano e genero.
+        tests:
+          - unique
+          - not_null
+
+      - name: added_year
+        description: Ano de entrada do titulo na Netflix.
+        tests:
+          - not_null
+
+      - name: genre
+        description: Genero do titulo.
+        tests:
+          - not_null
+
+      - name: title_count
+        description: Quantidade de titulos distintos no genero e ano.
+        tests:
+          - not_null
+
+      - name: titles_evaluated
+        description: Quantidade de titulos com avaliacao disponivel.
+        tests:
+          - not_null

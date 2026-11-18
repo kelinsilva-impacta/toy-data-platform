@@ -39,21 +39,74 @@ def member(name: str) -> str:
 # O roteiro: pergunta de negócio → plano em membros governados. Um agente com
 # LLM descobriria esse plano sozinho a partir de `list_measures`/`list_dimensions`.
 QUESTIONS: dict[str, dict[str, Any]] = {
-    "Qual país tem a melhor nota média entre os que têm pelo menos 20 títulos?": {
-        "measures": [member("count_titles"), member("avg_rating")],
+    "Quantos títulos existem no catálogo?": {
+        "measures": [member("count_titles")],
+        "dimensions": [],
+        "filters": [],
+        "limit": 1000,
+        "rank_by": None,
+    },
+
+    "Quantos filmes e séries existem no catálogo?": {
+        "measures": [member("count_titles")],
+        "dimensions": [member("title_type")],
+        "filters": [],
+        "limit": 1000,
+        "rank_by": None,
+    },
+
+    "Quais são os 5 gêneros com mais títulos?": {
+        "measures": [member("count_titles")],
+        "dimensions": [member("genre")],
+        "filters": [],
+        "limit": 1000,
+        "rank_by": member("count_titles"),
+        "top_n": 5,
+    },
+
+    "Quais são os 10 países com mais títulos?": {
+        "measures": [member("count_titles")],
         "dimensions": [member("country")],
         "filters": [
-            # `set` = país conhecido: o join da ponte preserva os títulos sem país
-            # numa linha NULL, que não é um país (ver `cube/README.md`).
-            {"member": member("country"), "operator": "set"},
-            {"member": member("count_titles"), "operator": "gte", "values": ["20"]},
+            {
+                "member": member("country"),
+                "operator": "set",
+            }
+        ],
+        "limit": 1000,
+        "rank_by": member("count_titles"),
+        "top_n": 10,
+    },
+
+    "Qual país tem a melhor nota média entre os que têm pelo menos 20 títulos?": {
+        "measures": [
+            member("count_titles"),
+            member("avg_rating"),
+        ],
+        "dimensions": [member("country")],
+        "filters": [
+            {
+                "member": member("country"),
+                "operator": "set",
+            },
+            {
+                "member": member("count_titles"),
+                "operator": "gte",
+                "values": ["20"],
+            },
         ],
         "limit": 1000,
         "rank_by": member("avg_rating"),
+        "top_n": 5,
     },
+
     "Quantos títulos e qual a nota média, por gênero?": {
-        "measures": [member("count_titles"), member("avg_rating")],
+        "measures": [
+            member("count_titles"),
+            member("avg_rating"),
+        ],
         "dimensions": [member("genre")],
+        "filters": [],
         "limit": 1000,
         "rank_by": None,
     },
@@ -115,7 +168,11 @@ def run(question: str) -> int:
                     print(f"\nFora da camada governada: {', '.join(invented)}. Governados: {', '.join(sorted(known))}")
                     return 1
 
-                arguments = {name: value for name, value in plan.items() if name != "rank_by"}
+                arguments = {
+                    name: value
+                    for name, value in plan.items()
+                    if name not in ("rank_by", "top_n")
+                }
                 result = await session.call_tool("query", arguments)
                 if result.is_error:
                     print(f"\nA consulta governada falhou: {result.content[0].text}")
@@ -134,16 +191,31 @@ def run(question: str) -> int:
                     return 0
 
                 # O contrato governado é medidas × dimensões (+ filtros, limite):
-                # ranking é apresentação, então ordenamos aqui, na ordem da medida.
+                # Ranking é apresentação: ordenamos localmente pela medida solicitada.
                 index = columns.index(_column(columns, rank_by))
-                ordered = sorted(rows, key=lambda row: float(row[index]), reverse=True)
-                _print_table(columns, ordered[:5])
-                top = ordered[0]
-                print(
-                    f"\nResposta: {top[columns.index(_column(columns, plan['dimensions'][0]))]} — "
-                    f"nota média {float(top[index]):.3f} em "
-                    f"{int(top[columns.index(_column(columns, 'count_titles'))])} títulos."
+
+                ordered = sorted(
+                    rows,
+                    key=lambda row: float(row[index]),
+                    reverse=True,
                 )
+
+                top_n = plan.get("top_n", 5)
+                top_rows = ordered[:top_n]
+
+                _print_table(columns, top_rows)
+
+                if top_rows:
+                    top = top_rows[0]
+                    dimension = plan["dimensions"][0]
+                    dimension_index = columns.index(_column(columns, dimension))
+
+                    print(
+                        f"\nResultado principal: "
+                        f"{top[dimension_index]} — "
+                        f"{rank_by.split('.')[-1]}: {top[index]}"
+                    )
+
                 return 0
 
     return anyio.run(demo)

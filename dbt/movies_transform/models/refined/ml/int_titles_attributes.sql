@@ -13,6 +13,7 @@ with deduped as (
         title,
         type,
         release_year,
+        date_added,
         duration,
         listed_in,
         country,
@@ -28,6 +29,7 @@ select
     title,
     type,
     release_year,
+    date_added,
     duration,
     listed_in,
     country

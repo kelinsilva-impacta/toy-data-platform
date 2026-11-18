@@ -40,7 +40,12 @@ cubes:
       - name: title_type
         description: Tipo do título (Movie / TV Show).
         sql: type_key
-        type: string
+        type: string     
+
+      - name: date_added
+        description: Data em que o título foi adicionado ao catálogo Netflix.
+        sql: date_added
+        type: time
 
     measures:
       - name: count_titles

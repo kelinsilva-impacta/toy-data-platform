@@ -171,6 +171,7 @@ services:
     env_file: trino/.env
     volumes:
       - ./trino/catalog:/etc/trino/catalog
+      - ./trino/config.properties:/etc/trino/config.properties:ro
 
   cube:
     image: cubejs/cube:v1.8.6
